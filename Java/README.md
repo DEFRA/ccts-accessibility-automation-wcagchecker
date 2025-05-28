@@ -1,35 +1,52 @@
-# WAVE Accessibility Automation
+# WCAG Checker Implementation
 
-## Overview
-The following repo contains dependencies for accessibility automation
+The implementation of accessibility testing using Wave, Axe. Below are the steps to set up and utilize the WCAG Checker for Java automated regression test scripts:
 
-## Dependencies
+## Prerequisites
 
-1. Selenium 4
+Ensure you have the following dependencies installed:
+- Selenium
+- Java
+- Maven
+ 
+## Usage
+This wrapper is used along with existing Selenium Automated regression pack.
 
-2. Java
+### 1. Initialize Accessibility Checker
+Use the `init()` method to initialize the accessibility checker. This method should be placed in hooks, such as the `BeforeAll`hook, to ensure it called before executing all tests.
 
-3. Maven
+```Java
+new WcagAnalyzer().init();
+```
 
-4. WAVE Chrome Extension Download access from https://clients2.google.com/service/update2/crx?response=redirect&prodversion=${version}&x=id%3Djbbplnpkjmmeebjpijfedlgcdilocofh%26installsource%3Dondemand%26uc&nacl_arch=x86-64&acceptformat=crx2,crx3
+### 2. Analyze the Page for Accessibility Issues
+Use the `analyse(driver)` method to scan the current page for accessibility issues. This method should be called wherever you need to scan a page. This method takes 2 parameters, the browser instance as first parameter and followed by unique code(needed only when scan the same page multipe times, leave it otherwise).
 
+```Java
 
-## How to use?
+new cognizant.compliance.checker.WcagAnalyzer().analyse(driver);
 
-This middleware is used along with Selenium Test Automation regression pack.
+new cognizant.compliance.checker.WcagAnalyzer().analyse(driver, "unique key to differentiage each page scan");
 
-1. Call the below method in Before Test Run:
+```
+### 3. Generate HTML Report by Category
+Use the `getHtmlString()` method from `HtmlReportByIssueCategory` class to generate an HTML report categorized by accessibility violations. This method should be used in hooks, such as `@AfterAll` annotation, to produce the report after all test executions are completed.
 
-```new AccessibilityTestExecutor().init(driver, "C:\\Users\\214101\\Downloads\\Temp", "", false);
+```Java
 
-2. Call the below method to the places whereever visiting to the page/URL:
+FileWriter htmlByCategory = new FileWriter("Accessibility-Test-Result-By-Category.html");
+htmlByCategory.write(new HtmlReportByIssueCategory().getHtmlString());
+htmlByCategory.close();
 
-```new AccessibilityTestExecutor().start(driver);
+```
+## Example Workflow
+Below is an example workflow for integrating the WCAG Checker:
 
-3. Call the below method to collect the accessibility issues at the end of test execution/TeadDown process:
+1. Place `init()` in a hook like `@BeforeAll` annotation to initialize the accessibility checker.
+2. Use `analyse(driver)` or `analyse(driver,"unique key")` in the specific test cases or hooks where a page scan is required.
+3. After all tests, call `getHtmlString()` from `HtmlReportByIssueCategory` class  to generate and retrieve the accessibility report.
 
-```new HtmlReportByGuidLines().getHtmlString()
-
-	FileWriter htmlWriter = new FileWriter("Wave-accessibility-result.html");
-	htmlWriter.write(new HtmlReportByGuidLines().getHtmlString());
-	htmlWriter.close();
+## Notes
+- Ensure that the Axe and Selenium dependencies are properly configured in your project.
+- The `getHtmlString()` method from `HtmlReportByGuidLines` class is available for generating reports categorized by WCAG guidelines.
+- The `getJsonReport()` method from `JsonReport` class is also available for generating reports in json format.
