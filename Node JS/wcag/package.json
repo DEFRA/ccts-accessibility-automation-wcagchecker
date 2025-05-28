@@ -1,0 +1,19 @@
+{
+  "name": "wcag-js-v2",
+  "version": "1.0.0",
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "axe-core": "^4.10.2",
+    "date-fns": "^4.1.0",
+    "esbuild": "^0.25.1",
+    "webdriverio": "^9.4.1"
+  },
+  "dependencies": {
+    "flatted": "^3.3.3"
+  }
+}
+
