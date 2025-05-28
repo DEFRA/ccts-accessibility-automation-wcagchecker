@@ -1,0 +1,73 @@
+.stats-chart-row {
+	display: block;
+	height: 25px
+}
+
+.stats-chart-row-label {
+	font-size: 12px;
+	width: 50%;
+	float: left
+}
+
+.stats-chart-row-value {
+	font-size: 12px;
+	float: right;
+	margin-left: 5px
+}
+
+.stats-chart-row-value.color-high {
+	color: #f66
+}
+
+.stats-chart-row-value.color-medium {
+	color: #eeb943
+}
+
+.stats-chart-row-value.color-low {
+	color: #60c888
+}
+
+.stats-chart-row-items {
+	font-size: 12px;
+	float: right
+}
+
+.stats-chart-row-bar {
+	position: relative;
+	float: left;
+	height: 5px;
+	background-color: #4c608d;
+	width: 100%;
+	margin-bottom: 10px
+}
+
+.stats-chart-row-bar-value {
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 5px
+}
+
+.stats-chart-row-bar-value.color-high {
+	background-color: #f66
+}
+
+.stats-chart-row-bar-value.color-medium {
+	background-color: #eeb943
+}
+
+.stats-chart-row-bar-value.color-low {
+	background-color: #60c888
+}
+
+.block-color {
+	background-color: #334670;
+}
+
+.complaint-text {
+	font-size: 12px;
+}
+
+.light-red{
+	background-color: #FFCCCB;
+}
