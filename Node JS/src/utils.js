@@ -173,11 +173,11 @@ export const deserializedWaveResults = () => {
                     jsonReport[reportKey].forEach((violation) => {
                         const result = {
                             URL: jsonReportKey,
-                            Title: violation.data.title??''.trim().replace(/\r\n/g, ''),
-                            Summary: violation.data.summary??''.trim().replace(/\r\n/g, ''),
-                            Purpose: violation.data.purpose??''.trim().replace(/\r\n/g, ''),
-                            Actions: violation.data.actions??''.trim().replace(/\r\n/g, ''),
-                            ElementXPath: parseAlertXPath(violation.itemXPath,reportKey),
+                            Title: violation.data.title ?? ''.trim().replace(/\r\n/g, ''),
+                            Summary: violation.data.summary ?? ''.trim().replace(/\r\n/g, ''),
+                            Purpose: violation.data.purpose ?? ''.trim().replace(/\r\n/g, ''),
+                            Actions: violation.data.actions ?? ''.trim().replace(/\r\n/g, ''),
+                            ElementXPath: parseErrorXPath(violation.itemXPath),
                             Type: violation.data.cat_code,
                             Tool: "Cognizant WCAG Compliance Checker"
                         };
@@ -230,14 +230,11 @@ export const deserializedStatistics = () => {
     return statsData;
 }
 
-export const parseAlertXPath = (xpath, category) => {
-    if (category === 'alert') {
-        let updatedXpath = xpath.replace(/DIV\[(\d+)\]/, (match, index) => {
-            let newIndex = parseInt(index, 10) - 1;
-            return `DIV[${newIndex}]`;
-        });
+export const parseErrorXPath = (xpath) => {
+    let updatedXpath = xpath.replace(/DIV\[(\d+)\]/, (match, index) => {
+        let newIndex = parseInt(index, 10) - 1;
+        return `DIV[${newIndex}]`;
+    });
 
-        return updatedXpath;
-    }
-    return xpath;
+    return updatedXpath;
 }
