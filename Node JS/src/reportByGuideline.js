@@ -1,5 +1,6 @@
 import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedWaveResults } from "./utils.js";
 import { wcagResult } from "./global.js";
+import fs from 'fs'
 
 let htmlHeader =
     "<head>" +
@@ -129,12 +130,12 @@ let htmlAccordion =
 let totalCriticalIssuesCount = 0;
 let totalMediumIssuesCount = 0;
 
-export const getHtmlReportByGuideLine = () => {
+export const getHtmlReportByGuideLine = async () => {
     let html = [];
 
     const endDateTime = getDateString("dd-MM-yyyy HH:mm:ss");
     let statsData = deserializedStatistics();
-    let waveViolations = deserializedWaveResults();
+    let waveViolations = await deserializedWaveResults();
     let axeViolations = deserializedAxeResults();
     let allViolations = waveViolations.concat(axeViolations);
 
@@ -145,22 +146,28 @@ export const getHtmlReportByGuideLine = () => {
         `<div class="container mt-4 bg-light shadow-lg"><div class="container-fluid p-3">` +
         `<div class="text-secondary mb-4">Test Run: ` +
         `${wcagResult.startDateTime} - ${endDateTime}</div>` +
-        // `${getTotalPagesGuideLine(statsData)}</div></div>`);
+        `${getTotalPagesGuideLine(statsData)}</div></div>` +
         `</div></div>`);
 
     let pageIndex = 0;
 
     statsData.forEach((item, index) => {
-        let report = allViolations.filter(c => c.URL === item.URL);
-        let errorCount = parseInt(item.Error);
-        let contrastCount = parseInt(item.Contrast);
-        let alertsCount = parseInt(item.Alert);
-        let allItemsCount = parseInt(item.AllItemCount);
+        let report = allViolations.filter(c => c.url === item.url);
+        
+        let errors = report.filter(c => c.type === "error");
+        let contrasts = report.filter(c => c.type === "contrast");
+        let alerts = report.filter(c => c.type === "alert");
 
-        let seriousItems = report.filter(c => c.Type === "serious");
-        let criticalItems = report.filter(c => c.Type === "critical");
-        let moderateCount = (report.filter(c => c.Type === "moderate")).length || 0;
+        let seriousItems = report.filter(c => c.type === "serious");
+        let criticalItems = report.filter(c => c.type === "critical");
+        let moderateItems = report.filter(c => c.type === "moderate");
 
+        let errorCount = errors.length || 0;
+        let contrastCount = contrasts.length || 0;
+        let alertsCount = alerts.length || 0;
+        let allItemsCount = parseInt(item.totalElements);
+
+        let moderateCount = moderateItems.length || 0;
         let axeErrorCount = (seriousItems.length || 0) + (criticalItems.length || 0);
         errorCount += axeErrorCount;
         alertsCount += moderateCount;
@@ -169,7 +176,7 @@ export const getHtmlReportByGuideLine = () => {
         allItemsCount += axeErrorCount + moderateCount;
 
         html.push(`<div class="container mt-4 bg-light shadow-lg"><div class="container-fluid p-3"><h6 class="text-secondary">` +
-            `Page ${pageIndex + 1} - ${item.URL}</h6><div class="row mt-3">`);
+            `Page ${pageIndex + 1} - ${item.url}</h6><div class="row mt-3">`);
 
         htmlNonComplaint = totalErrors > 0 ? htmlNonComplaint
             .replaceAll("${ComplaintTitle}", "CONFORMANCE")
@@ -197,27 +204,27 @@ export const getHtmlReportByGuideLine = () => {
         html.push(`${htmlStatisticsstring}</div><br><div id="accordion">`);
 
         if (errorCount > 0) {
-            html.push(groupViolationsByGuidLine(report, "error", pageIndex));
+            html.push(groupViolationsByGuidLine(errors, pageIndex));
         }
 
         if (contrastCount > 0) {
-            html.push(groupViolationsByGuidLine(report, "contrast", pageIndex));
+            html.push(groupViolationsByGuidLine(contrasts, pageIndex));
         }
 
         if ((seriousItems.length || 0) > 0) {
-            html.push(groupViolationsByGuidLine(report, "serious", pageIndex));
+            html.push(groupViolationsByGuidLine(seriousItems, pageIndex));
         }
 
         if ((criticalItems.length || 0) > 0) {
-            html.push(groupViolationsByGuidLine(report, "critical", pageIndex));
+            html.push(groupViolationsByGuidLine(criticalItems, pageIndex));
         }
 
         if (alertsCount > 0) {
-            html.push(groupViolationsByGuidLine(report, "alert", pageIndex));
+            html.push(groupViolationsByGuidLine(alerts, pageIndex));
         }
 
         if (moderateCount > 0) {
-            html.push(groupViolationsByGuidLine(report, "moderate", pageIndex));
+            html.push(groupViolationsByGuidLine(moderateItems, pageIndex));
         }
 
         html.push("</div></div></div>");
@@ -240,57 +247,60 @@ export const getTotalIssuesGuideLine = (html) => {
     return html.replaceAll("${TotalCriticalIssues}", totalCriticalIssuesCount.toString()).replaceAll("${TotalMediumIssues}", totalMediumIssuesCount.toString());
 }
 
-export const groupViolationsByGuidLine = (violations, errorCategory, pageIndex) => {
+export const groupViolationsByGuidLine = (violations, pageIndex) => {
     let tempArr = []
-    const xpathListMap = new Map();
-    const guideLines = getGuideLine(violations)
 
+    const groupedByGuideline = new Map();
     violations.forEach(item => {
-        if (item.Type === errorCategory) {
-            for (const [key, value] of guideLines.entries()) {
-                if (!xpathListMap.has(value)) {
-                    xpathListMap.set(value, `<li>${item.ElementXPath}</li>`);
-                }
-                else {
-                    let xPath = xpathListMap.get(value) + `<li>${item.ElementXPath}</li>`;
-                    xpathListMap.set(value, xPath);
-                }
+        item.guidelines.forEach(guideline => {
+            const key = guideline.name;
+
+            if (!groupedByGuideline.has(key)) {
+                // Initialize with a deep copy of the item and empty elementXPath
+                groupedByGuideline.set(key, {
+                    ...item,
+                    elementXPath: [...item.elementXPath],
+                    guidelines: [guideline] // keep only the relevant guideline
+                });
+            } else {
+                const existing = groupedByGuideline.get(key);
+
+                // Concatenate elementXPath
+                existing.elementXPath = existing.elementXPath.concat(item.elementXPath);
+
+                // Optionally merge other properties if needed
+                existing.count += item.count;
             }
-        }
+        });
     });
 
-    for (const [key, value] of xpathListMap.entries()) {
+    groupedByGuideline.forEach((value, key) => {
 
         const tempHtml = appendErrorsForGuidLines(
-            violations,
-            xpathListMap,
-            guideLines,
+            value,
             key,
-            errorCategory,
             pageIndex
         )
 
         tempArr.push(tempHtml);
-    }
+    });
 
     return tempArr.join('');
 }
 
-export const appendErrorsForGuidLines = (violations, xpathList, guideLineList, filterValue, errorCategory, pageIndex) => {
+export const appendErrorsForGuidLines = (violation, guideLine, pageIndex) => {
 
     let tempHtml = '';
-    let violation = violations.filter(item => item.Type === errorCategory && item.GuideLines && item.GuideLines.some(x => x.Name + ' - ' + x.GuidelineLevel === filterValue));
-    let item = violation[0];
 
-    if (item) {
-        const categoryCode = item.Type
-        const title = item.Title
-        const summary = item.Summary
-        const purpose = item.Purpose
-        const actions = item.Actions
-        let elementXpaths = xpathList.get(filterValue);
-        let count = (elementXpaths.match(/<li>/g) || []).length;
-        let guideLineCheckList = new Map();
+    if (violation) {
+        const categoryCode = violation.type
+        const title = violation.title
+        const summary = violation.summary
+        const purpose = violation.purpose
+        const actions = violation.actions
+
+        let count = violation.elementXPath?.length;
+
         let errorBgColor = ''
         let impactCategoryMsg = ''
 
@@ -315,15 +325,15 @@ export const appendErrorsForGuidLines = (violations, xpathList, guideLineList, f
                 break;
         }
 
-        for (const [key, value] of guideLineList.entries()) {
-            if (filterValue !== "None" && value === filterValue && !guideLineCheckList.has(key)) {
-                guideLineCheckList.set(key, `<a href="${key}">${value}</a>`);
-            }
-        }
+        let elementXpaths = violation.elementXPath?.map((item) => {
+            return `<li>${item}</li>`;
+        }).join('');
 
-        let guideLineCheckItems = [...guideLineCheckList.values()].flat().join('');
+        let guideLineCheckItems = violation.guidelines?.map((item) => {
+            return `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.link}</a>`;
+        }).join('<br>');
 
-        const navigation = filterValue
+        const navigation = guideLine
             .replaceAll("(", "")
             .replaceAll(")", "")
             .replaceAll(".", "")
@@ -334,7 +344,7 @@ export const appendErrorsForGuidLines = (violations, xpathList, guideLineList, f
         let htmlString = htmlAccordion
             .replaceAll("${index}", `${navigation}${categoryCode}_${pageIndex}`)
             .replaceAll("${errorBgColor}", errorBgColor)
-            .replaceAll("${title}", filterValue)
+            .replaceAll("${title}", guideLine)
             .replaceAll("${errorType}", title)
             .replaceAll("${summary}", summary)
             .replaceAll("${highImpactErrorCountMsg}", impactCategoryMsg)
@@ -354,7 +364,7 @@ export const getGuideLine = (violations) => {
     const guidLineList = new Map();
 
     violations.forEach(item => {
-        const guideLines = item.GuideLines;
+        const guideLines = item.guidelines;
 
         if (guideLines) {
             if (guideLines.length <= 0) {
@@ -363,7 +373,7 @@ export const getGuideLine = (violations) => {
             else {
                 guideLines.forEach(guideLine => {
                     guidLineList.set(
-                        guideLine.GuidelineLink, `${guideLine.Name} - ${guideLine.GuidelineLevel}`
+                        guideLine.link, `${guideLine.name}`
                     )
                 });
             }

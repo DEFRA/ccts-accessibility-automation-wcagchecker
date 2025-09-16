@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { wcagResult } from "./global.js";
 import { promises as fs } from 'fs';
+import axios from "axios";
 
 export const getDateString = (dateFormat) => {
     const currentDate = new Date()
@@ -158,53 +159,43 @@ export const deserializedAxeResults = () => {
     return resultData;
 }
 
-export const deserializedWaveResults = () => {
+export const deserializedWaveResults = async () => {
 
     const resultsData = [];
 
-    wcagResult.jsonReportViolations.forEach((item) => {
-
-        Object.keys(item).forEach(jsonReportKey => {
+    for (const item of wcagResult.waveViolations) {
+        for (const jsonReportKey of Object.keys(item)) {
             const jsonReport = item[jsonReportKey];
 
-            Object.keys(jsonReport).forEach(reportKey => {
+            for (const [categoryKey, categoryValue] of Object.entries(jsonReport)) {
+                if (categoryKey !== 'feature' && categoryKey !== 'structure' && categoryKey !== 'aria') {
+                    for (const [itemKey, itemValue] of Object.entries(categoryValue.items)) {
+                        try {
+                            let responseDetails = await axios.get(`https://wave.webaim.org/api/docs?id=${itemKey}`);
+                            let responseDetailsData = responseDetails.data;
 
-                if (reportKey !== 'feature' && reportKey !== 'structure' && reportKey !== 'aria') {
-                    jsonReport[reportKey].forEach((violation) => {
-                        const result = {
-                            URL: jsonReportKey,
-                            Title: violation.data.title??''.trim().replace(/\r\n/g, ''),
-                            Summary: violation.data.summary??''.trim().replace(/\r\n/g, ''),
-                            Purpose: violation.data.purpose??''.trim().replace(/\r\n/g, ''),
-                            Actions: violation.data.actions??''.trim().replace(/\r\n/g, ''),
-                            ElementXPath: parseAlertXPath(violation.itemXPath,reportKey),
-                            Type: violation.data.cat_code,
-                            Tool: "Cognizant WCAG Compliance Checker"
-                        };
+                            const result = {
+                                url: jsonReportKey,
+                                title: responseDetailsData.title ?? ''.trim().replace(/\r\n/g, ''),
+                                summary: responseDetailsData.summary ?? ''.trim().replace(/\r\n/g, ''),
+                                purpose: responseDetailsData.purpose ?? ''.trim().replace(/\r\n/g, ''),
+                                actions: responseDetailsData.actions ?? ''.trim().replace(/\r\n/g, ''),
+                                elementXPath: itemValue.xpaths,
+                                type: responseDetailsData.type,
+                                count: itemValue.count,
+                                guidelines: responseDetailsData.guidelines,
+                                tool: "Wave"
+                            };
 
-                        if (violation.data.guidelines && Object.keys(violation.data.guidelines).length > 0) {
-                            const jsonGuideLines = violation.data.guidelines;
-                            const guidLines = [];
-
-                            Object.keys(jsonGuideLines).forEach((guideLineKey) => {
-                                guidLines.push({
-                                    Name: jsonGuideLines[guideLineKey].name,
-                                    GuidelineCode: jsonGuideLines[guideLineKey].code,
-                                    GuidelineLink: jsonGuideLines[guideLineKey].link,
-                                    GuidelineLevel: jsonGuideLines[guideLineKey].level_name
-                                });
-                            });
-
-                            result.GuideLines = guidLines;
+                            resultsData.push(result);
+                        } catch (error) {
+                            console.error(`Error fetching data for ${itemKey}:`, error);
                         }
-
-                        resultsData.push(result);
-                    });
+                    }
                 }
-            })
-        });
-
-    });
+            }
+        }
+    }
 
     return resultsData;
 }
@@ -212,32 +203,20 @@ export const deserializedWaveResults = () => {
 export const deserializedStatistics = () => {
     const statsData = [];
 
-    wcagResult.jsonReportStatistics.forEach((item) => {
+    wcagResult.waveStatistics.forEach((item) => {
         const jsonStatKey = Object.keys(item);
         const jsonStat = item[jsonStatKey];
         const stat = {
-            AllItemCount: jsonStat.allitemcount.toString(),
-            TotalElements: jsonStat.totalelements.toString(),
-            PageTitle: jsonStat.pagetitle.toString(),
-            Error: jsonStat.error.toString(),
-            Contrast: jsonStat.contrast.toString(),
-            Alert: jsonStat.alert.toString(),
-            URL: jsonStatKey[0],
+            allItemCount: jsonStat.allitemcount.toString(),
+            totalElements: jsonStat.totalelements.toString(),
+            pageTitle: jsonStat.pagetitle.toString(),
+            error: 0,
+            contrast: 0,
+            alert: 0,
+            url: jsonStatKey[0],
         };
         statsData.push(stat);
     });
 
     return statsData;
-}
-
-export const parseAlertXPath = (xpath, category) => {
-    if (category === 'alert') {
-        let updatedXpath = xpath.replace(/DIV\[(\d+)\]/, (match, index) => {
-            let newIndex = parseInt(index, 10) - 1;
-            return `DIV[${newIndex}]`;
-        });
-
-        return updatedXpath;
-    }
-    return xpath;
 }

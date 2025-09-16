@@ -1,9 +1,9 @@
 export let wcagResult = {
-    jsonReportViolations: [],
-    jsonReportStatistics: [],
+    waveViolations: [],
+    waveStatistics: [],
     visitedPageUrls: new Map(),
     startDateTime: '',
     isErrorFound: false,
-    jsRuleScript: '',
     axeViolations: [],
+    lighthouseViolations: [],
 };

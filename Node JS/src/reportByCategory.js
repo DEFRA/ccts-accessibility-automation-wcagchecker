@@ -129,106 +129,13 @@ let htmlAccordion =
     '                         <ul class="mt-3"><small>${xpathlist}</small></ul>' +
     "                 </div></div></div></div>";
 
-export const getTotalIssuesHtml = (html) => {
-    return html.replaceAll("${TotalCriticalIssues}", totalCriticalIssuesCount.toString()).replaceAll("${TotalMediumIssues}", totalMediumIssuesCount.toString());
-}
-
-export const getTotalPagesHtml = (jsonStatistics) => {
-    const pageCount = jsonStatistics.length;
-    htmlTotalIssues = htmlTotalIssues.replaceAll("${TotalPages}", pageCount.toString());
-    return htmlTotalIssues;
-}
-
-export const groupJsonByIssueType = (data, category, pageIndex) => {
-    let tempHtml = [];
-    let reportByCategory = data.filter(item => item.Type === category);
-    let resultMap = {};
-
-    reportByCategory.forEach(report => {
-        let type = report.Title;
-
-        if (!resultMap[type]) {
-            resultMap[type] = [];
-        }
-
-        resultMap[type].push(`<li>${report.ElementXPath}</li>`);
-    });
-
-    Object.keys(resultMap).forEach(key => {
-        let report = data.find(item => item.Type === category && item.Title === key);
-        tempHtml.push(appendErrorsForIssueType(report, resultMap[key].join(''), category, pageIndex));
-    });
-
-    return tempHtml.join('');
-}
-
-export const appendErrorsForIssueType = (item, xpathList, filterValue, pageIndex) => {
-    let tempHtml = [];
-    const count = (xpathList.match(/<li>/g) || []).length;
-    let impactCategoryMsg = "";
-    let errorBgColor = "";
-
-    switch (item.Type) {
-        case "error":
-        case "contrast":
-        case "critical":
-        case "serious":
-            impactCategoryMsg = `${count} high impact`;
-            errorBgColor = "bg-danger bg-gradient";
-            totalCriticalIssuesCount += count;
-            break;
-        case "alert":
-        case "moderate":
-            impactCategoryMsg = `${count} medium impact`;
-            errorBgColor = "bg-warning";
-            totalMediumIssuesCount += count;
-            break;
-        default:
-            impactCategoryMsg = `${count} low impact`;
-            errorBgColor = "bg-success";
-            break;
-    }
-
-    let guideLinestring = "";
-
-    if (item.GuideLines) {
-        item.GuideLines.forEach(guideLine => {
-            if (guideLine.GuidelineLevel) {
-                guideLinestring += `<a href="${guideLine.GuidelineLink}">${guideLine.GuidelineLevel} - ${guideLine.GuidelineCode} - ${guideLine.GuidelineLink}</a><br>`;
-            }
-        });
-    }
-    else { guideLinestring = 'NA'; }
-
-    const navigation = filterValue.replaceAll(/[().\-,\s]/g, "");
-
-    const title = item.Title.replaceAll(/[().\-,\s]/g, "");
-    let titleDisplay = item.Title;
-
-    if (item.Tool && item.Tool === "Axe") {
-        titleDisplay = `Axe Violation: ${item.Title}`;
-    }
-    const htmlString = htmlAccordion.replaceAll("${index}", `${navigation}_${item.Type}_${title}_${pageIndex}`)
-        .replaceAll("${title}", titleDisplay)
-        .replaceAll("${errorType}", item.Title)
-        .replaceAll("${errorBgColor}", errorBgColor)
-        .replaceAll("${highImpactErrorCountMsg}", impactCategoryMsg)
-        .replaceAll("${summary}", item.Summary)
-        .replaceAll("${purpose}", item.Purpose)
-        .replaceAll("${actions}", item.Actions)
-        .replaceAll("${guideLineCheckList}", guideLinestring)
-        .replaceAll("${xpathlist}", xpathList);
-
-    tempHtml.push(htmlString);
-    return tempHtml.join('');
-}
-
-export const getHtmlReportByCategory = () => {
+export const getHtmlReportByCategory = async () => {
     let html = [];
     const endDateTime = getDateString("dd-MM-yyyy HH:mm:ss");
     let statsData = deserializedStatistics();
-    let waveViolations = deserializedWaveResults();
-    let axeViolations = deserializedAxeResults();
+    let waveViolations = await deserializedWaveResults();
+    //let axeViolations = deserializedAxeResults();
+    let axeViolations = [];
     let allViolations = waveViolations.concat(axeViolations);
 
     htmlHeader = htmlHeader.replaceAll("${statisticsStyles}", getStyles());
@@ -238,22 +145,28 @@ export const getHtmlReportByCategory = () => {
         `<div class="container mt-4 bg-light shadow-lg"><div class="container-fluid p-3">` +
         `<div class="text-secondary mb-4">Test Run: ` +
         `${wcagResult.startDateTime} - ${endDateTime}</div>` +
-        // `${getTotalPagesHtml(statsData)}</div></div>`);
+        `${getTotalPagesHtml(statsData)}</div></div>` +
         `</div></div>`);
 
     let pageIndex = 0;
 
     statsData.forEach((item, index) => {
-        let report = allViolations.filter(c => c.URL === item.URL);
-        let errorCount = parseInt(item.Error);
-        let contrastCount = parseInt(item.Contrast);
-        let alertsCount = parseInt(item.Alert);
-        let allItemsCount = parseInt(item.AllItemCount);
+        let report = allViolations.filter(c => c.url === item.url);
 
-        let seriousItems = report.filter(c => c.Type === "serious");
-        let criticalItems = report.filter(c => c.Type === "critical");
-        let moderateCount = (report.filter(c => c.Type === "moderate")).length || 0;
+        let errors = report.filter(c => c.type === "error");
+        let contrasts = report.filter(c => c.type === "contrast");
+        let alerts = report.filter(c => c.type === "alert");
 
+        let seriousItems = report.filter(c => c.type === "serious");
+        let criticalItems = report.filter(c => c.type === "critical");
+        let moderateItems = report.filter(c => c.type === "moderate");
+
+        let errorCount = errors.length || 0;
+        let contrastCount = contrasts.length || 0;
+        let alertsCount = alerts.length || 0;
+        let allItemsCount = parseInt(item.totalElements);
+
+        let moderateCount = moderateItems.length || 0;
         let axeErrorCount = (seriousItems.length || 0) + (criticalItems.length || 0);
         errorCount += axeErrorCount;
         alertsCount += moderateCount;
@@ -290,27 +203,27 @@ export const getHtmlReportByCategory = () => {
         html.push(`${htmlStatisticsstring}</div><br><div id="accordion">`);
 
         if (errorCount > 0) {
-            html.push(groupJsonByIssueType(report, "error", pageIndex));
+            html.push(groupJsonByIssueType(errors, pageIndex));
         }
 
         if (contrastCount > 0) {
-            html.push(groupJsonByIssueType(report, "contrast", pageIndex));
+            html.push(groupJsonByIssueType(contrasts, pageIndex));
         }
 
         if ((seriousItems.length || 0) > 0) {
-            html.push(groupJsonByIssueType(report, "serious", pageIndex));
+            html.push(groupJsonByIssueType(seriousItems, pageIndex));
         }
 
         if ((criticalItems.length || 0) > 0) {
-            html.push(groupJsonByIssueType(report, "critical", pageIndex));
+            html.push(groupJsonByIssueType(criticalItems, pageIndex));
         }
 
         if (alertsCount > 0) {
-            html.push(groupJsonByIssueType(report, "alert", pageIndex));
+            html.push(groupJsonByIssueType(alerts, pageIndex));
         }
 
         if (moderateCount > 0) {
-            html.push(groupJsonByIssueType(report, "moderate", pageIndex));
+            html.push(groupJsonByIssueType(moderateItems, pageIndex));
         }
 
         html.push("</div></div></div>");
@@ -320,4 +233,128 @@ export const getHtmlReportByCategory = () => {
     html.push("</html>");
     let htmlValue = getTotalIssuesHtml(html.join(''));
     return htmlValue;
+}
+
+
+export const getTotalIssuesHtml = (html) => {
+    return html.replaceAll("${TotalCriticalIssues}", totalCriticalIssuesCount.toString()).replaceAll("${TotalMediumIssues}", totalMediumIssuesCount.toString());
+}
+
+export const getTotalPagesHtml = (jsonStatistics) => {
+    const pageCount = jsonStatistics.length;
+    htmlTotalIssues = htmlTotalIssues.replaceAll("${TotalPages}", pageCount.toString());
+    return htmlTotalIssues;
+}
+
+export const groupJsonByIssueType = (violations, pageIndex) => {
+    
+    let tempArr = [];
+
+    const groupedByTitle = new Map();
+
+    violations.forEach(item => {
+        const key = item.title;
+
+        if (!groupedByTitle.has(key)) {
+            // Clone the item and initialize elementXPath and guidelines
+            groupedByTitle.set(key, {
+                ...item,
+                elementXPath: [...item.elementXPath],
+                guidelines: [...item.guidelines],
+                count: item.count
+            });
+        } else {
+            const existing = groupedByTitle.get(key);
+
+            // Merge elementXPath
+            existing.elementXPath = existing.elementXPath.concat(item.elementXPath);
+
+            // Merge guidelines, avoiding duplicates
+            item.guidelines.forEach(g => {
+                if (!existing.guidelines.some(existingG => existingG.name === g.name)) {
+                    existing.guidelines.push(g);
+                }
+            });
+
+            // Update count
+            existing.count += item.count;
+        }
+    });
+
+    groupedByTitle.forEach((value, key) => {
+
+        const tempHtml = appendErrorsForIssueType(
+            value,
+            key,
+            pageIndex
+        )
+
+        tempArr.push(tempHtml);
+    });
+
+    return tempArr.join('');
+}
+
+export const appendErrorsForIssueType = (item, filterValue, pageIndex) => {
+    let tempHtml = [];
+    let count = item.elementXPath?.length;
+    let impactCategoryMsg = "";
+    let errorBgColor = "";
+
+    switch (item.type) {
+        case "error":
+        case "contrast":
+        case "critical":
+        case "serious":
+            impactCategoryMsg = `${count} high impact`;
+            errorBgColor = "bg-danger bg-gradient";
+            totalCriticalIssuesCount += count;
+            break;
+        case "alert":
+        case "moderate":
+            impactCategoryMsg = `${count} medium impact`;
+            errorBgColor = "bg-warning";
+            totalMediumIssuesCount += count;
+            break;
+        default:
+            impactCategoryMsg = `${count} low impact`;
+            errorBgColor = "bg-success";
+            break;
+    }
+
+    let guideLinestring = "";
+
+    let elementXpaths = item.elementXPath?.map((item) => {
+        return `<li>${item}</li>`;
+    }).join('');
+
+    if (item.guidelines) {
+        guideLinestring = item.guidelines?.map((item) => {
+            return `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.link}</a>`;
+        }).join('<br>');
+    }
+    else { guideLinestring = 'NA'; }
+
+    const navigation = filterValue.replaceAll(/[().\-,\s]/g, "");
+
+    const title = item.title.replaceAll(/[().\-,\s]/g, "");
+    let titleDisplay = item.title;
+
+    if (item.Tool && item.Tool === "Axe") {
+        titleDisplay = `Axe Violation: ${item.Title}`;
+    }
+
+    const htmlString = htmlAccordion.replaceAll("${index}", `${navigation}_${item.type}_${title}_${pageIndex}`)
+        .replaceAll("${title}", titleDisplay)
+        .replaceAll("${errorType}", item.title)
+        .replaceAll("${errorBgColor}", errorBgColor)
+        .replaceAll("${highImpactErrorCountMsg}", impactCategoryMsg)
+        .replaceAll("${summary}", item.summary)
+        .replaceAll("${purpose}", item.purpose)
+        .replaceAll("${actions}", item.actions)
+        .replaceAll("${guideLineCheckList}", guideLinestring)
+        .replaceAll("${xpathlist}", elementXpaths);
+
+    tempHtml.push(htmlString);
+    return tempHtml.join('');
 }
