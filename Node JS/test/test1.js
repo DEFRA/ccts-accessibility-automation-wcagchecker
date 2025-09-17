@@ -24,7 +24,7 @@ import { getHtmlReportByCategory } from '../src/reportByCategory.js';
         //call this method before invoking tests 
         await init();
 
-        await browser.url('https://www.gov.uk/control-dog-public');
+        await browser.url('https://stackoverflow.com/questions');
         //call this method for every page redirection
         await analyse(browser, '');
 

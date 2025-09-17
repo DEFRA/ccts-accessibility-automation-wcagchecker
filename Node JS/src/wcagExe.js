@@ -4,104 +4,74 @@ import axeCore from 'axe-core';
 import { stringify, parse } from "flatted";
 import lighthouse from 'lighthouse'
 import axios from 'axios';
+import chromeRemoteInterface from 'chrome-remote-interface';
 
 const options = {
-    logLevel: 'info',
-    output: 'json',
-    onlyCategories: ['accessibility']
+   logLevel: 'info',
+   output: 'json',
+   onlyCategories: ['accessibility']
 };
 
 export const init = async () => {
-    wcagResult.startDateTime = getDateString("dd-MM-yyyy HH:mm:ss")
+   wcagResult.startDateTime = getDateString("dd-MM-yyyy HH:mm:ss")
 }
 
 export const analyse = async (driver, pageKey) => {
 
-    let visitedUrl = await driver.getUrl()
+   let visitedUrl = await driver.getUrl()
 
-    if (pageKey) {
-        const pageUniqueKey = pageKey.trim()
+   if (pageKey) {
+      const pageUniqueKey = pageKey.trim()
 
-        visitedUrl =
-            pageUniqueKey.length > 0
-                ? visitedUrl + pageUniqueKey
-                : visitedUrl
-    }
+      visitedUrl =
+         pageUniqueKey.length > 0
+            ? visitedUrl + pageUniqueKey
+            : visitedUrl
+   }
 
-    if (!wcagResult.visitedPageUrls.has(visitedUrl)) {
+   if (!wcagResult.visitedPageUrls.has(visitedUrl)) {
 
-        wcagResult.visitedPageUrls.set(visitedUrl, await driver.getTitle())
+      wcagResult.visitedPageUrls.set(visitedUrl, await driver.getTitle())
 
-        await driver.setTimeout({ "script": 120000 });
+      await driver.setTimeout({ "script": 120000 });
 
-        await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
-        await collectWaveAccessibilityIssues(visitedUrl);
+      //await collectWaveAccessibilityIssues(visitedUrl);
 
-        // await collectLightHouseAccessibilityIssues(visitedUrl);
+      await collectLightHouseAccessibilityIssues(visitedUrl);
 
-        const { source } = axeCore;
-        await driver.execute(source);
-        let axeOptions = {};
+      const { source } = axeCore;
+      await driver.execute(source);
+      let axeOptions = {};
 
-        let results = await driver.executeAsync((options, done) => {
-            axe.run(options, (err, results) => {
-                if (err)
-                    done(err);
-                done(JSON.parse(JSON.stringify(results)))
-            });
-        }, axeOptions);
+      let results = await driver.executeAsync((options, done) => {
+         axe.run(options, (err, results) => {
+            if (err)
+               done(err);
+            done(JSON.parse(JSON.stringify(results)))
+         });
+      }, axeOptions);
 
-        await collectAxeAccessibilityIssues(visitedUrl, results.violations);
-    }
+      await collectAxeAccessibilityIssues(visitedUrl, results.violations);
+   }
 }
 
 export const collectLightHouseAccessibilityIssues = async (currentUrl) => {
 
-    const result = await lighthouse("https://stackoverflow.com/questions", options);
+   const result = await lighthouse(currentUrl, options);
+   const auditsDetails = Object.values(result.lhr.audits).filter(audit => audit.score !== 1 && audit.details?.items);
 
-    const auditsDetails = Object.values(result.lhr.audits).filter(audit => audit.score !== 1 && audit.details?.items);
-
-    const lightHouseViolations = auditsDetails.flatMap((item) => {
-        const debugData = item.details?.debugData || {};
-        const items = item.details?.items || [];
-
-        return items.map((entry) => {
-            const node = entry.node || {};
-
-            return {
-                id: item.id || '',
-                Title: item.title || '',
-                Summary: item.description || '',
-                selector: node.selector || '',
-                ElementXPath: node.snippet || '',
-                Purpose: node.explanation || '',
-                Type: debugData.impact || '',
-                wcagTags: (debugData.tags || []).filter((tag) => tag.startsWith("wcag") || tag.startsWith('cat.')),
-            };
-        });
-    });
-
-    fs.writeFileSync('accessibility_guideline_latest.json', JSON.stringify(lightHouseViolations), (err) => {
-
-        // In case of a error throw err.
-        if (err) throw err;
-    })
-
-    let jsonReportObj = {};
-    jsonReportObj[currentUrl] = parse(stringify(result.lhr.audits));
-    wcagResult.waveViolations.push(jsonReportObj);
-
-    let jsonStatisticsObj = {};
-    jsonStatisticsObj[currentUrl] = parse(stringify(jsonStatistic));
-    wcagResult.waveStatistics.push(jsonStatisticsObj);
+   let jsonReportObj = {};
+   jsonReportObj[currentUrl] = auditsDetails;
+   wcagResult.lighthouseViolations.push(jsonReportObj);
 }
 
 export const collectWaveAccessibilityIssues = async (currentUrl) => {
 
-    //const response = await axios.get(`https://wave.webaim.org/api/request?key=s1Xe9MDR5808&reporttype=3&url==${currentUrl}`);
+   //const response = await axios.get(`https://wave.webaim.org/api/request?key=s1Xe9MDR5808&reporttype=3&url==${currentUrl}`);
 
-    const response = `{
+   const response = `{
    "status":{
       "success":true,
       "httpstatuscode":200
@@ -303,17 +273,17 @@ export const collectWaveAccessibilityIssues = async (currentUrl) => {
    }
 }`;
 
-    let jsonReportObj = {};
-    jsonReportObj[currentUrl] = JSON.parse(response)?.categories;
-    wcagResult.waveViolations.push(jsonReportObj);
+   let jsonReportObj = {};
+   jsonReportObj[currentUrl] = JSON.parse(response)?.categories;
+   wcagResult.waveViolations.push(jsonReportObj);
 
-    let jsonStatisticsObj = {};
-    jsonStatisticsObj[currentUrl] = JSON.parse(response)?.statistics;
-    wcagResult.waveStatistics.push(jsonStatisticsObj);
+   let jsonStatisticsObj = {};
+   jsonStatisticsObj[currentUrl] = JSON.parse(response)?.statistics;
+   wcagResult.waveStatistics.push(jsonStatisticsObj);
 }
 
 export const collectAxeAccessibilityIssues = async (url, reslut) => {
-    let jsonReportObj = {};
-    jsonReportObj[url] = reslut;
-    wcagResult.axeViolations.push(jsonReportObj);
+   let jsonReportObj = {};
+   jsonReportObj[url] = reslut;
+   wcagResult.axeViolations.push(jsonReportObj);
 }

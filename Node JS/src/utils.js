@@ -108,23 +108,21 @@ export const deserializedAxeResults = () => {
         const pageUrlKey = Object.keys(currentItem);
         const jsonReport = currentItem[pageUrlKey];
 
-        jsonReport.forEach(rowValue => {
 
-            rowValue.nodes.forEach(item => {
-                //let toSolveValue = [];                
-                let tags = [];
+        jsonReport.forEach(item => {
 
-                rowValue.tags.forEach(tag => {
-                    if (tag.includes("wcag"))
-                        tags.push(tag);
-                });
+            let actions = '';
+            let elementXPath = [];
+            let tagsString = (item.tags || []).filter((tag) => tag.startsWith("wcag") || tag.startsWith('cat.'));
 
-                let tagsString = tags.length > 0 ? tags.join(', ') : 'None';
+            item.nodes.forEach(node => {
 
-                //let toSolveValueString = toSolveValue.length > 0 ? toSolveValue.join(', ') : '';
-                let toSolveValueString = item.failureSummary;
-                // sanitize HTML
-                let htmlValue = item.html.trim()
+                if (actions === '') {
+                    actions = item.failureSummary;
+                }
+
+                //sanitize html
+                let xpath = node.html.trim()
                     .replaceAll(/(\r\n|\n)/g, '')
                     .replaceAll(/ {2}/g, '')
                     .replaceAll(/&/g, "&amp;")
@@ -133,26 +131,27 @@ export const deserializedAxeResults = () => {
                     .replaceAll(/"/g, "&quot;")
                     .replaceAll(/'/g, "&#039;");
 
-                let result = {
-                    URL: pageUrlKey[0],
-                    Title: rowValue.id,
-                    Summary: rowValue.description,
-                    Purpose: rowValue.help,
-                    Actions: toSolveValueString,
-                    ElementXPath: htmlValue,
-                    Browser: "CHROME",
-                    Type: rowValue.impact,
-                    Tool: "Axe",
-                    GuideLines: [{
-                        Name: "Axe Violation",
-                        GuidelineCode: '',
-                        GuidelineLink: rowValue.helpUrl,
-                        GuidelineLevel: tagsString
-                    }]
-                };
-
-                resultData.push(result);
+                elementXPath.push(xpath);
             });
+
+            let result = {
+                url: pageUrlKey[0],
+                title: item.id,
+                summary: item.description,
+                purpose: item.help,
+                actions: actions,
+                elementXPath: elementXPath,
+                type: item.impact,
+                tool: "Axe",
+                guidelines: [{
+                    name: "Axe Violation",
+                    guidelineCode: '',
+                    guidelineLink: item.helpUrl.trim(),
+                    guidelineLevel: tagsString
+                }]
+            };
+
+            resultData.push(result);
         });
     });
 
@@ -219,4 +218,60 @@ export const deserializedStatistics = () => {
     });
 
     return statsData;
+}
+
+export const deserializedLighthouseResults = async () => {
+
+    const resultsData = [];
+
+    wcagResult.lighthouseViolations.forEach(data => {
+
+        const pageUrlKey = Object.keys(data);
+        const items = data[pageUrlKey];
+
+        items.forEach((item) => {
+            const debugData = item.details?.debugData || {};
+            const detailsItemList = item.details?.items || [];
+
+            let actions = '';
+            let elementXPath = [];
+            let guidelines = [];
+
+            guidelines.push(
+                {
+                    name: "Lighthouse",
+                    guidelineCode: '',
+                    guidelineLink: '',
+                    guidelineLevel: (debugData.tags || []).filter((tag) => tag.startsWith("wcag") || tag.startsWith('cat.'))
+                });
+
+            detailsItemList.map((entry) => {
+                const node = entry.node || {};
+
+                if (actions === '') {
+                    actions = node.explanation;
+                }
+
+                elementXPath.push(node.snippet);
+            });
+
+            const resultData = {
+                url: pageUrlKey,
+                title: item.id,
+                summary: item.title,
+                purpose: item.description,
+                actions: actions,
+                elementXPath: elementXPath,
+                type: debugData.impact,
+                guidelines: guidelines,
+                count: elementXPath.length,
+                tool: "Lighthouse"
+            };
+
+            resultsData.push(resultData);
+        });
+
+    });
+
+    return resultsData;
 }

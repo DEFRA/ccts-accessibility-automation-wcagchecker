@@ -1,4 +1,4 @@
-import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedWaveResults } from "./utils.js";
+import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedWaveResults, deserializedLighthouseResults } from "./utils.js";
 import { wcagResult } from "./global.js";
 
 let totalCriticalIssuesCount = 0;
@@ -134,9 +134,9 @@ export const getHtmlReportByCategory = async () => {
     const endDateTime = getDateString("dd-MM-yyyy HH:mm:ss");
     let statsData = deserializedStatistics();
     let waveViolations = await deserializedWaveResults();
-    //let axeViolations = deserializedAxeResults();
-    let axeViolations = [];
-    let allViolations = waveViolations.concat(axeViolations);
+    let axeViolations = deserializedAxeResults();
+    let lightHouseViolations = deserializedLighthouseResults();
+    let allViolations = waveViolations.concat(axeViolations).concat(lightHouseViolations);
 
     htmlHeader = htmlHeader.replaceAll("${statisticsStyles}", getStyles());
 
