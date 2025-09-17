@@ -1,4 +1,4 @@
-import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedWaveResults } from "./utils.js";
+import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedWaveResults, deserializedLighthouseResults } from "./utils.js";
 import { wcagResult } from "./global.js";
 import fs from 'fs'
 
@@ -137,7 +137,8 @@ export const getHtmlReportByGuideLine = async () => {
     let statsData = deserializedStatistics();
     let waveViolations = await deserializedWaveResults();
     let axeViolations = deserializedAxeResults();
-    let allViolations = waveViolations.concat(axeViolations);
+    let lightHouseViolations = await deserializedLighthouseResults();
+    let allViolations = waveViolations.concat(axeViolations).concat(lightHouseViolations);
 
     htmlHeader = htmlHeader.replaceAll("${statisticsStyles}", getStyles());
 
@@ -153,7 +154,7 @@ export const getHtmlReportByGuideLine = async () => {
 
     statsData.forEach((item, index) => {
         let report = allViolations.filter(c => c.url === item.url);
-        
+
         let errors = report.filter(c => c.type === "error");
         let contrasts = report.filter(c => c.type === "contrast");
         let alerts = report.filter(c => c.type === "alert");
@@ -253,7 +254,7 @@ export const groupViolationsByGuidLine = (violations, pageIndex) => {
     const groupedByGuideline = new Map();
     violations.forEach(item => {
         item.guidelines.forEach(guideline => {
-            const key = guideline.name;
+            const key = guideline.guidelineCode;
 
             if (!groupedByGuideline.has(key)) {
                 // Initialize with a deep copy of the item and empty elementXPath
@@ -329,9 +330,14 @@ export const appendErrorsForGuidLines = (violation, guideLine, pageIndex) => {
             return `<li>${item}</li>`;
         }).join('');
 
-        let guideLineCheckItems = violation.guidelines?.map((item) => {
-            return `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.link}</a>`;
-        }).join('<br>');
+        let guideLinestring = '';
+
+        if (violation.guidelines) {
+            guideLinestring = violation.guidelines?.map((item) => {
+                return `<a href="${item.guidelineLink}" target="_blank" rel="noopener noreferrer">${item.guidelineLink}</a>`;
+            }).join('<br>');
+        }
+        else { guideLinestring = 'NA'; }
 
         const navigation = guideLine
             .replaceAll("(", "")
@@ -341,16 +347,18 @@ export const appendErrorsForGuidLines = (violation, guideLine, pageIndex) => {
             .replaceAll(" ", "")
             .replaceAll(",", "-")
 
+        let accordianTitle = `${violation.tool}: ${guideLine}`
+
         let htmlString = htmlAccordion
             .replaceAll("${index}", `${navigation}${categoryCode}_${pageIndex}`)
             .replaceAll("${errorBgColor}", errorBgColor)
-            .replaceAll("${title}", guideLine)
+            .replaceAll("${title}", accordianTitle)
             .replaceAll("${errorType}", title)
             .replaceAll("${summary}", summary)
             .replaceAll("${highImpactErrorCountMsg}", impactCategoryMsg)
             .replaceAll("${purpose}", purpose)
             .replaceAll("${actions}", actions)
-            .replaceAll("${guideLineCheckList}", guideLineCheckItems)
+            .replaceAll("${guideLineCheckList}", guideLinestring)
             .replaceAll("${xpathlist}", elementXpaths)
 
         tempHtml = htmlString;

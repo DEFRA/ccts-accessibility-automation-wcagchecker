@@ -134,6 +134,16 @@ export const deserializedAxeResults = () => {
                 elementXPath.push(xpath);
             });
 
+            let guidelines = [];
+
+            guidelines.push(
+                {
+                    name: "Axe Violation",
+                    guidelineCode: tagsString.join(", "),
+                    guidelineLink: item.helpUrl.trim(),
+                    guidelineLevel: ''
+                });
+
             let result = {
                 url: pageUrlKey[0],
                 title: item.id,
@@ -143,12 +153,7 @@ export const deserializedAxeResults = () => {
                 elementXPath: elementXPath,
                 type: item.impact,
                 tool: "Axe",
-                guidelines: [{
-                    name: "Axe Violation",
-                    guidelineCode: '',
-                    guidelineLink: item.helpUrl.trim(),
-                    guidelineLevel: tagsString
-                }]
+                guidelines: guidelines
             };
 
             resultData.push(result);
@@ -173,6 +178,18 @@ export const deserializedWaveResults = async () => {
                             let responseDetails = await axios.get(`https://wave.webaim.org/api/docs?id=${itemKey}`);
                             let responseDetailsData = responseDetails.data;
 
+                            let guidelines = [];
+
+                            responseDetailsData.guidelines.forEach(x => {
+                                guidelines.push(
+                                    {
+                                        name: "Wave",
+                                        guidelineCode: x.name,
+                                        guidelineLink: x.link,
+                                        guidelineLevel: ''
+                                    });
+                            });
+
                             const result = {
                                 url: jsonReportKey,
                                 title: responseDetailsData.title ?? ''.trim().replace(/\r\n/g, ''),
@@ -182,7 +199,7 @@ export const deserializedWaveResults = async () => {
                                 elementXPath: itemValue.xpaths,
                                 type: responseDetailsData.type,
                                 count: itemValue.count,
-                                guidelines: responseDetailsData.guidelines,
+                                guidelines: guidelines,
                                 tool: "Wave"
                             };
 
@@ -240,9 +257,11 @@ export const deserializedLighthouseResults = async () => {
             guidelines.push(
                 {
                     name: "Lighthouse",
-                    guidelineCode: '',
+                    guidelineCode: (debugData.tags || [])
+                        .filter(tag => tag.startsWith("wcag") || tag.startsWith("cat."))
+                        .join(", "),
                     guidelineLink: '',
-                    guidelineLevel: (debugData.tags || []).filter((tag) => tag.startsWith("wcag") || tag.startsWith('cat.'))
+                    guidelineLevel: ''
                 });
 
             detailsItemList.map((entry) => {
@@ -252,11 +271,21 @@ export const deserializedLighthouseResults = async () => {
                     actions = node.explanation;
                 }
 
-                elementXPath.push(node.snippet);
+                //sanitize html
+                let xpath = node.snippet.trim()
+                    .replaceAll(/(\r\n|\n)/g, '')
+                    .replaceAll(/ {2}/g, '')
+                    .replaceAll(/&/g, "&amp;")
+                    .replaceAll(/</g, "&lt;")
+                    .replaceAll(/>/g, "&gt;")
+                    .replaceAll(/"/g, "&quot;")
+                    .replaceAll(/'/g, "&#039;");
+
+                elementXPath.push(xpath);
             });
 
             const resultData = {
-                url: pageUrlKey,
+                url: pageUrlKey[0],
                 title: item.id,
                 summary: item.title,
                 purpose: item.description,

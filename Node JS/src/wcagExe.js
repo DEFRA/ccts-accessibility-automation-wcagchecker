@@ -37,7 +37,7 @@ export const analyse = async (driver, pageKey) => {
 
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      //await collectWaveAccessibilityIssues(visitedUrl);
+      await collectWaveAccessibilityIssues(visitedUrl);
 
       await collectLightHouseAccessibilityIssues(visitedUrl);
 
@@ -69,7 +69,7 @@ export const collectLightHouseAccessibilityIssues = async (currentUrl) => {
 
 export const collectWaveAccessibilityIssues = async (currentUrl) => {
 
-   //const response = await axios.get(`https://wave.webaim.org/api/request?key=s1Xe9MDR5808&reporttype=3&url==${currentUrl}`);
+   //const response = await axios.get(`https://wave.webaim.org/api/request?key={API_KEY}&reporttype=3&url==${currentUrl}`);
 
    const response = `{
    "status":{

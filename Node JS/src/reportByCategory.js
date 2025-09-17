@@ -135,7 +135,7 @@ export const getHtmlReportByCategory = async () => {
     let statsData = deserializedStatistics();
     let waveViolations = await deserializedWaveResults();
     let axeViolations = deserializedAxeResults();
-    let lightHouseViolations = deserializedLighthouseResults();
+    let lightHouseViolations = await deserializedLighthouseResults();
     let allViolations = waveViolations.concat(axeViolations).concat(lightHouseViolations);
 
     htmlHeader = htmlHeader.replaceAll("${statisticsStyles}", getStyles());
@@ -175,7 +175,7 @@ export const getHtmlReportByCategory = async () => {
         allItemsCount += axeErrorCount + moderateCount;
 
         html.push(`<div class="container mt-4 bg-light shadow-lg"><div class="container-fluid p-3"><h6 class="text-secondary">` +
-            `Page ${pageIndex + 1} - ${item.URL}</h6><div class="row mt-3">`);
+            `Page ${pageIndex + 1} - ${item.url}</h6><div class="row mt-3">`);
 
         htmlNonComplaint = totalErrors > 0 ? htmlNonComplaint
             .replaceAll("${ComplaintTitle}", "CONFORMANCE")
@@ -247,7 +247,7 @@ export const getTotalPagesHtml = (jsonStatistics) => {
 }
 
 export const groupJsonByIssueType = (violations, pageIndex) => {
-    
+
     let tempArr = [];
 
     const groupedByTitle = new Map();
@@ -330,7 +330,7 @@ export const appendErrorsForIssueType = (item, filterValue, pageIndex) => {
 
     if (item.guidelines) {
         guideLinestring = item.guidelines?.map((item) => {
-            return `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.link}</a>`;
+            return `${item.guidelineCode}   <a href="${item.guidelineLink}" target="_blank" rel="noopener noreferrer">${item.guidelineLink}</a>`;
         }).join('<br>');
     }
     else { guideLinestring = 'NA'; }
@@ -338,11 +338,7 @@ export const appendErrorsForIssueType = (item, filterValue, pageIndex) => {
     const navigation = filterValue.replaceAll(/[().\-,\s]/g, "");
 
     const title = item.title.replaceAll(/[().\-,\s]/g, "");
-    let titleDisplay = item.title;
-
-    if (item.Tool && item.Tool === "Axe") {
-        titleDisplay = `Axe Violation: ${item.Title}`;
-    }
+    let titleDisplay = `${item.tool}: ${item.title}`;
 
     const htmlString = htmlAccordion.replaceAll("${index}", `${navigation}_${item.type}_${title}_${pageIndex}`)
         .replaceAll("${title}", titleDisplay)

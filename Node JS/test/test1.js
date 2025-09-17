@@ -50,8 +50,13 @@ import { getHtmlReportByCategory } from '../src/reportByCategory.js';
         //     if (err) throw err;
         // })
 
+        fs.writeFileSync('accessibility_category_latest.html', await getHtmlReportByCategory(), (err) => {
 
-        fs.writeFileSync('accessibility_guideline_latest.html', await getHtmlReportByCategory(), (err) => {
+            // In case of a error throw err.
+            if (err) throw err;
+        })
+
+        fs.writeFileSync('accessibility_guideline_latest.html', await getHtmlReportByGuideLine(), (err) => {
 
             // In case of a error throw err.
             if (err) throw err;
