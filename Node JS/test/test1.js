@@ -24,18 +24,14 @@ import { getHtmlReportByCategory } from '../src/reportByCategory.js';
         //call this method before invoking tests 
         await init();
 
-        await browser.url('https://stackoverflow.com/questions');
-        //call this method for every page redirection
-        await analyse(browser, '');
-
         await browser.url('https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs');
         await analyse(browser, '');
 
-        // await browser.url('https://www.gov.uk/control-dog-public');
-        // await analyse(browser, '');
+        await browser.url('https://www.gov.uk/control-dog-public');
+        await analyse(browser, '');
 
-        // await browser.url('https://environment.data.gov.uk/shoreline-planning/coastal-erosion');
-        // await analyse(browser, '');
+        await browser.url('https://environment.data.gov.uk/shoreline-planning/coastal-erosion');
+        await analyse(browser, '');
 
     }
     catch (err) {

@@ -1,4 +1,4 @@
-import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedWaveResults, deserializedLighthouseResults } from "./utils.js";
+import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedLighthouseResults } from "./utils.js";
 import { wcagResult } from "./global.js";
 import fs from 'fs'
 
@@ -134,11 +134,14 @@ export const getHtmlReportByGuideLine = async () => {
     let html = [];
 
     const endDateTime = getDateString("dd-MM-yyyy HH:mm:ss");
-    let statsData = deserializedStatistics();
-    let waveViolations = await deserializedWaveResults();
+    
+    let axeStatsData = wcagResult.axeStatistics;
+    let lighthouseStatsData = wcagResult.lighthouseStatistics;
     let axeViolations = deserializedAxeResults();
     let lightHouseViolations = await deserializedLighthouseResults();
-    let allViolations = waveViolations.concat(axeViolations).concat(lightHouseViolations);
+    let allViolations = axeViolations.concat(lightHouseViolations);
+
+    let statsData = axeStatsData.length > 0 ? axeStatsData : lighthouseStatsData;
 
     htmlHeader = htmlHeader.replaceAll("${statisticsStyles}", getStyles());
 

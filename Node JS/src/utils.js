@@ -118,7 +118,7 @@ export const deserializedAxeResults = () => {
             item.nodes.forEach(node => {
 
                 if (actions === '') {
-                    actions = item.failureSummary;
+                    actions = node.failureSummary;
                 }
 
                 //sanitize html

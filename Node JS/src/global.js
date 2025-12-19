@@ -5,5 +5,7 @@ export let wcagResult = {
     startDateTime: '',
     isErrorFound: false,
     axeViolations: [],
+    axeStatistics: [],
     lighthouseViolations: [],
+    lighthouseStatistics: [],
 };
