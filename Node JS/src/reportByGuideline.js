@@ -6,8 +6,8 @@ let htmlHeader =
     "<head>" +
     "   <title>Accessibility Test Run Report</title>" +
     ' <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">' +
-    ' <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script><style>${statisticsStyles}</style>' +
-    "</head>";
+    ' <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>' +
+"</head>";
 
 let htmlTotalIssues =
     '<div class="row mb-3">' +
@@ -134,7 +134,7 @@ export const getHtmlReportByGuideLine = async () => {
     let html = [];
 
     const endDateTime = getDateString("dd-MM-yyyy HH:mm:ss");
-    
+
     let axeStatsData = wcagResult.axeStatistics;
     let lighthouseStatsData = wcagResult.lighthouseStatistics;
     let axeViolations = deserializedAxeResults();
@@ -158,62 +158,49 @@ export const getHtmlReportByGuideLine = async () => {
     statsData.forEach((item, index) => {
         let report = allViolations.filter(c => c.url === item.url);
 
-        let errors = report.filter(c => c.type === "error");
-        let contrasts = report.filter(c => c.type === "contrast");
-        let alerts = report.filter(c => c.type === "alert");
-
         let seriousItems = report.filter(c => c.type === "serious");
         let criticalItems = report.filter(c => c.type === "critical");
         let moderateItems = report.filter(c => c.type === "moderate");
 
-        let errorCount = errors.length || 0;
-        let contrastCount = contrasts.length || 0;
-        let alertsCount = alerts.length || 0;
+        let errorCount = 0;
         let allItemsCount = parseInt(item.totalElements);
 
-        let moderateCount = moderateItems.length || 0;
-        let axeErrorCount = (seriousItems.length || 0) + (criticalItems.length || 0);
-        errorCount += axeErrorCount;
-        alertsCount += moderateCount;
+        let totalSeriousCount = seriousItems.reduce((sum, item) => sum + (item.elementXPath?.length || 0), 0);
+        let totalCriticalCount = criticalItems.reduce((sum, item) => sum + (item.elementXPath?.length || 0), 0);
+        let totalModerateCount = moderateItems.reduce((sum, item) => sum + (item.elementXPath?.length || 0), 0);
 
-        let totalErrors = errorCount + contrastCount;
-        allItemsCount += axeErrorCount + moderateCount;
+        errorCount = (totalSeriousCount || 0) + (totalCriticalCount || 0);
+
+        let totalErrors = errorCount;
+        allItemsCount += errorCount + totalModerateCount;
 
         html.push(`<div class="container mt-4 bg-light shadow-lg"><div class="container-fluid p-3"><h6 class="text-secondary">` +
             `Page ${pageIndex + 1} - ${item.url}</h6><div class="row mt-3">`);
 
-        htmlNonComplaint = totalErrors > 0 ? htmlNonComplaint
-            .replaceAll("${ComplaintTitle}", "CONFORMANCE")
-            .replaceAll("${ComplaintMessage}", "This page is at risk of an accessibility issues.") :
-            htmlNonComplaint
-                .replaceAll("${ComplaintTitle}", "CONFORMANCE")
-                .replaceAll("${ComplaintMessage}", "This page is not at risk of an accessibility issues.");
+        const message = `${totalErrors > 0 ? "This page is at risk of accessibility issues." : "This page is not at risk of accessibility issues."}`;
 
-        html.push(htmlNonComplaint.replaceAll("${totalErrors}", totalErrors.toString()));
+        let newHtmlNonComplaint = htmlNonComplaint
+            .replaceAll("${ComplaintTitle}", "CONFORMANCE")
+            .replaceAll("${ComplaintMessage}", message);
+
+        html.push(newHtmlNonComplaint.replaceAll("${totalErrors}", totalErrors.toString()));
         html.push(htmlTotalErrors.replaceAll("${totalElements}", allItemsCount.toString()));
 
         let highImpactPercentage = (totalErrors / allItemsCount * 100).toFixed(2);
-        let mediumImpactPercentage = (alertsCount / allItemsCount * 100).toFixed(2);
-        let lowImpactValue = allItemsCount - totalErrors - alertsCount;
+        let mediumImpactPercentage = (totalModerateCount / allItemsCount * 100).toFixed(2);
+        let lowImpactValue = allItemsCount - totalErrors - totalModerateCount;
         let lowImpactPercentage = (parseFloat(100.0) - (parseFloat(highImpactPercentage) + parseFloat(mediumImpactPercentage))).toFixed(2);
 
         let htmlStatisticsstring = htmlStatistics
             .replaceAll("${highImpactsPercentage}", highImpactPercentage)
             .replaceAll("${highImpactsCount}", totalErrors.toString())
             .replaceAll("${mediumImpactsPercentage}", mediumImpactPercentage)
-            .replaceAll("${mediumImpactsCount}", alertsCount.toString())
+            .replaceAll("${mediumImpactsCount}", totalModerateCount.toString())
             .replaceAll("${lowImpactsPercentage}", lowImpactPercentage)
             .replaceAll("${lowImpactsCount}", lowImpactValue.toString());
 
         html.push(`${htmlStatisticsstring}</div><br><div id="accordion">`);
 
-        if (errorCount > 0) {
-            html.push(groupViolationsByGuidLine(errors, pageIndex));
-        }
-
-        if (contrastCount > 0) {
-            html.push(groupViolationsByGuidLine(contrasts, pageIndex));
-        }
 
         if ((seriousItems.length || 0) > 0) {
             html.push(groupViolationsByGuidLine(seriousItems, pageIndex));
@@ -223,11 +210,7 @@ export const getHtmlReportByGuideLine = async () => {
             html.push(groupViolationsByGuidLine(criticalItems, pageIndex));
         }
 
-        if (alertsCount > 0) {
-            html.push(groupViolationsByGuidLine(alerts, pageIndex));
-        }
-
-        if (moderateCount > 0) {
+        if (totalModerateCount > 0) {
             html.push(groupViolationsByGuidLine(moderateItems, pageIndex));
         }
 
