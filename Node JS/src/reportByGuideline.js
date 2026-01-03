@@ -1,13 +1,12 @@
-import { getDateString, getStyles, deserializedAxeResults, deserializedStatistics, deserializedLighthouseResults } from "./utils.js";
+import { getDateString, getStyles, deserializedAxeResults, deserializedLighthouseResults } from "./utils.js";
 import { wcagResult } from "./global.js";
-import fs from 'fs'
 
 let htmlHeader =
     "<head>" +
     "   <title>Accessibility Test Run Report</title>" +
     ' <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">' +
     ' <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script><style>${statisticsStyles}</style>' +
-"</head>";
+    "</head>";
 
 let htmlTotalIssues =
     '<div class="row mb-3">' +
@@ -24,7 +23,7 @@ let htmlTotalIssues =
     '         <div class="col-4">' +
     '             <div class="card">' +
     '                 <div class="card-header h6 bg-danger bg-gradient text-white text-opacity-75">' +
-    "                     Critical Issues" +
+    "                     Critical+Serious Issues" +
     "                    </div>" +
     '                 <div class="card-body text-center h6">' +
     "                     ${TotalCriticalIssues}" +
@@ -44,18 +43,29 @@ let htmlTotalIssues =
     "     </div>";
 
 let htmlStatistics =
-    '<div class="col-4">' +
+    '<div class="col-6">' +
     '                 <div class="card block-color text-white text-opacity-75">' +
     '                     <div class="card-body">' +
     '                         <div class="stats-chart-row">' +
     '                             <div class="stats-chart-row-label"> Critical </div>' +
-    '                             <div class="stats-chart-row-value color-high"><span class="stat-percent"' +
-    '                                     tabindex="0">${highImpactsPercentage}</span>%</div>' +
-    '                             <div class="stats-chart-row-items"><span class="stat-item" tabindex="0">${highImpactsCount}</span>' +
+    '                             <div class="stats-chart-row-value color-critical"><span class="stat-percent"' +
+    '                                     tabindex="0">${criticalImpactsPercentage}</span>%</div>' +
+    '                             <div class="stats-chart-row-items"><span class="stat-item" tabindex="0">${criticalImpactsCount}</span>' +
     '                                 <span class="stat-item-text" tabindex="0">items</span>' +
     "                             </div>" +
     '                             <div class="stats-chart-row-bar"> <span' +
-    '                                     class="stats-chart-row-bar-value color-high" style="width: ${highImpactsPercentage}%;"></span>' +
+    '                                     class="stats-chart-row-bar-value color-critical" style="width: ${criticalImpactsPercentage}%;"></span>' +
+    "                             </div>" +
+    "                         </div>" +
+    '                         <div class="stats-chart-row">' +
+    '                             <div class="stats-chart-row-label"> Serious </div>' +
+    '                             <div class="stats-chart-row-value color-serious"><span class="stat-percent"' +
+    '                                     tabindex="0">${seriousImpactsPercentage}</span>%</div>' +
+    '                             <div class="stats-chart-row-items"><span class="stat-item" tabindex="0">${seriousImpactsCount}</span>' +
+    '                                 <span class="stat-item-text" tabindex="0">items</span>' +
+    "                             </div>" +
+    '                             <div class="stats-chart-row-bar"> <span' +
+    '                                     class="stats-chart-row-bar-value color-serious" style="width: ${seriousImpactsPercentage}%;"></span>' +
     "                             </div>" +
     "                         </div>" +
     '                         <div class="stats-chart-row">' +
@@ -67,46 +77,32 @@ let htmlStatistics =
     "                             </div>" +
     '                             <div class="stats-chart-row-bar"> <span' +
     '                                     class="stats-chart-row-bar-value color-medium" style="width: ${mediumImpactsPercentage}%;"></span>' +
-    "                             </div>" +
+    '                             </div>' +
     "                         </div>" +
-    '                         <div class="stats-chart-row">' +
-    '                             <div class="stats-chart-row-label"> Low </div>' +
-    '                             <div class="stats-chart-row-value color-low"><span class="stat-percent"' +
-    '                                     tabindex="0">${lowImpactsPercentage}</span>%</div>' +
-    '                             <div class="stats-chart-row-items"><span class="stat-item" tabindex="0">${lowImpactsCount}</span>' +
-    '                                 <span class="stat-item-text" tabindex="0">items</span>' +
-    "                             </div>" +
-    '                             <div class="stats-chart-row-bar"> <span' +
-    '                                     class="stats-chart-row-bar-value color-low" style="width: ${lowImpactsPercentage}%;"></span>' +
-    "                             </div></div></div></div></div>";
-
-let htmlTotalErrors =
-    '<div class="col-4">' +
-    '                 <div class="card block-color text-white text-opacity-75">' +
-    '                     <div class="card-body">' +
-    '                         <div class="h6">TOTAL</div>' +
-    '                         <span class="complaint-text">Total issues.</span>' +
-    "                         <br><br>" +
-    '                         <strong class="text-white text-opacity-75">${totalElements}</strong>' +
-    "                     </div>" +
-    "                 </div>" +
-    "             </div>";
+    '                         <div class="stats-chart-row"></div>' +
+    "                         </div></div></div>";
 
 let htmlNonComplaint =
-    '<div class="col-4">' +
+    '<div class="col-6">' +
     '                 <div class="card block-color text-white text-opacity-75;">' +
     '                     <div class="card-body">' +
+    '                         <div class="stats-chart-row">' +
     '                         <div class="h6">${ComplaintTitle}</div>' +
+    '                     </div>' +
+    '                         <div class="stats-chart-row">' +
     '                         <span class="complaint-text">${ComplaintMessage}</span>' +
-    "                         <br><br>" +
+    '                     </div>' +
+    '                         <div class="stats-chart-row"></div>' +
+    '                         <div class="stats-chart-row">' +
     '                         <strong class="text-white text-opacity-75">Errors: ${totalErrors}</strong>' +
+    '                     </div>' +
     "                     </div>" +
     "                 </div>" +
     "             </div>";
 
 let htmlAccordion =
     '<div class="accordion" id="accordionPanelsStayOpen${index}">' +
-    '                 <div class="accordion-item">' +
+    '                 <div class="${accordionItem}">' +
     '                 <div class="accordion-header" id="heading${index}">' +
     '                 <div class="accordion-button text-white text-opacity-75 ${errorBgColor}" type="button" data-bs-toggle="collapse" data-bs-target="#panelsStayOpen-collapse${index}" aria-expanded="true" aria-controls="panelsStayOpen-collapse${index}">' +
     '                     <div class="row col-12 g-2">' +
@@ -137,7 +133,7 @@ export const getHtmlReportByGuideLine = async () => {
 
     let axeStatsData = wcagResult.axeStatistics;
     let lighthouseStatsData = wcagResult.lighthouseStatistics;
-    let axeViolations = deserializedAxeResults();
+    let axeViolations = await deserializedAxeResults();
     let lightHouseViolations = await deserializedLighthouseResults();
     let allViolations = axeViolations.concat(lightHouseViolations);
 
@@ -155,52 +151,44 @@ export const getHtmlReportByGuideLine = async () => {
 
     let pageIndex = 0;
 
-    statsData.forEach((item, index) => {
+    statsData.forEach((item) => {
         let report = allViolations.filter(c => c.url === item.url);
 
-        let seriousItems = report.filter(c => c.type === "serious");
         let criticalItems = report.filter(c => c.type === "critical");
+        let seriousItems = report.filter(c => c.type === "serious");
         let moderateItems = report.filter(c => c.type === "moderate");
-
-        let errorCount = 0;
-        let allItemsCount = parseInt(item.totalElements);
 
         let totalSeriousCount = seriousItems.reduce((sum, item) => sum + (item.elementXPath?.length || 0), 0);
         let totalCriticalCount = criticalItems.reduce((sum, item) => sum + (item.elementXPath?.length || 0), 0);
         let totalModerateCount = moderateItems.reduce((sum, item) => sum + (item.elementXPath?.length || 0), 0);
+        let totalErrors = totalSeriousCount + totalCriticalCount;
 
-        errorCount = (totalSeriousCount || 0) + (totalCriticalCount || 0);
-
-        let totalErrors = errorCount;
-        allItemsCount += errorCount + totalModerateCount;
+        let allItemsCount = totalSeriousCount + totalCriticalCount + totalModerateCount;
 
         html.push(`<div class="container mt-4 bg-light shadow-lg"><div class="container-fluid p-3"><h6 class="text-secondary">` +
             `Page ${pageIndex + 1} - ${item.url}</h6><div class="row mt-3">`);
 
-        const message = `${totalErrors > 0 ? "This page is at risk of accessibility issues." : "This page is not at risk of accessibility issues."}`;
+        const message = `${totalCriticalCount > 0 ? "This page is at risk of accessibility issues." : "This page is not at risk of accessibility issues."}`;
 
         let newHtmlNonComplaint = htmlNonComplaint
             .replaceAll("${ComplaintTitle}", "CONFORMANCE")
             .replaceAll("${ComplaintMessage}", message);
 
         html.push(newHtmlNonComplaint.replaceAll("${totalErrors}", totalErrors.toString()));
-        html.push(htmlTotalErrors.replaceAll("${totalElements}", allItemsCount.toString()));
 
-        let highImpactPercentage = (totalErrors / allItemsCount * 100).toFixed(2);
+        let criticalImpactPercentage = (totalCriticalCount / allItemsCount * 100).toFixed(2);
+        let seriousImpactPercentage = (totalSeriousCount / allItemsCount * 100).toFixed(2);
         let mediumImpactPercentage = (totalModerateCount / allItemsCount * 100).toFixed(2);
-        let lowImpactValue = allItemsCount - totalErrors - totalModerateCount;
-        let lowImpactPercentage = (parseFloat(100.0) - (parseFloat(highImpactPercentage) + parseFloat(mediumImpactPercentage))).toFixed(2);
 
         let htmlStatisticsstring = htmlStatistics
-            .replaceAll("${highImpactsPercentage}", highImpactPercentage)
-            .replaceAll("${highImpactsCount}", totalErrors.toString())
+            .replaceAll("${criticalImpactsPercentage}", criticalImpactPercentage)
+            .replaceAll("${criticalImpactsCount}", totalCriticalCount.toString())
+            .replaceAll("${seriousImpactsPercentage}", seriousImpactPercentage)
+            .replaceAll("${seriousImpactsCount}", totalSeriousCount.toString())
             .replaceAll("${mediumImpactsPercentage}", mediumImpactPercentage)
-            .replaceAll("${mediumImpactsCount}", totalModerateCount.toString())
-            .replaceAll("${lowImpactsPercentage}", lowImpactPercentage)
-            .replaceAll("${lowImpactsCount}", lowImpactValue.toString());
+            .replaceAll("${mediumImpactsCount}", totalModerateCount.toString());
 
         html.push(`${htmlStatisticsstring}</div><br><div id="accordion">`);
-
 
         if ((seriousItems.length || 0) > 0) {
             html.push(groupViolationsByGuidLine(seriousItems, pageIndex));
@@ -240,7 +228,7 @@ export const groupViolationsByGuidLine = (violations, pageIndex) => {
     const groupedByGuideline = new Map();
     violations.forEach(item => {
         item.guidelines.forEach(guideline => {
-            const key = guideline.guidelineCode;
+            const key = guideline.guidelineCode + item.tool;
 
             if (!groupedByGuideline.has(key)) {
                 // Initialize with a deep copy of the item and empty elementXPath
@@ -290,15 +278,21 @@ export const appendErrorsForGuidLines = (violation, guideLine, pageIndex) => {
 
         let errorBgColor = ''
         let impactCategoryMsg = ''
+        let accordionItembgColor = "accordion-item";
 
         switch (categoryCode) {
-            case 'critical':
-            case 'serious':
-            case 'error':
-            case 'contrast':
-                errorBgColor = 'bg-danger bg-gradient';
-                impactCategoryMsg = count + ' high impact';
+            case "error":
+            case "contrast":
+            case "critical":
+                impactCategoryMsg = `${count} critical impact`;
+                errorBgColor = "bg-danger bg-gradient";
                 totalCriticalIssuesCount += count;
+                break;
+            case "serious":
+                impactCategoryMsg = `${count} serious impact`;
+                errorBgColor = "bg-danger-light";
+                totalCriticalIssuesCount += count;
+                accordionItembgColor = "accordion-item custom";
                 break;
             case 'moderate':
             case 'alert':
@@ -333,12 +327,14 @@ export const appendErrorsForGuidLines = (violation, guideLine, pageIndex) => {
             .replaceAll(" ", "")
             .replaceAll(",", "-")
 
-        let accordianTitle = `${violation.tool}: ${guideLine}`
+        let updatedGuideLine = guideLine.replaceAll("Axe", "").replaceAll("Lighthouse", "").trim();
+        let accordianTitle = `${violation.tool}: ${updatedGuideLine}`
 
         let htmlString = htmlAccordion
             .replaceAll("${index}", `${navigation}${categoryCode}_${pageIndex}`)
             .replaceAll("${errorBgColor}", errorBgColor)
             .replaceAll("${title}", accordianTitle)
+            .replaceAll("${accordionItem}", accordionItembgColor)
             .replaceAll("${errorType}", title)
             .replaceAll("${summary}", summary)
             .replaceAll("${highImpactErrorCountMsg}", impactCategoryMsg)

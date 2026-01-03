@@ -1,10 +1,8 @@
+/* global axe */
 import { getDateString } from "./utils.js";
 import { wcagResult } from "./global.js";
 import axeCore from 'axe-core';
-import { stringify, parse } from "flatted";
 import lighthouse from 'lighthouse'
-import axios from 'axios';
-import chromeRemoteInterface from 'chrome-remote-interface';
  
 const options = {
    logLevel: 'info',
@@ -78,6 +76,7 @@ export const collectAxeAccessibilityIssues = async (driver, url) => {
  
    const { source } = axeCore;
    await driver.execute(source);
+
    let axeOptions = {};
  
    let response = await driver.executeAsync((options, done) => {

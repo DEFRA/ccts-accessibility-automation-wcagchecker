@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { wcagResult } from "./global.js";
 import { promises as fs } from 'fs';
-import axios from "axios";
 
 export const getDateString = (dateFormat) => {
     const currentDate = new Date()
@@ -28,8 +27,11 @@ export const getStyles = () => {
         " margin-left: 5px\r\n" +
         "}\r\n" +
         "\r\n" +
-        ".stats-chart-row-value.color-high {\r\n" +
+        ".stats-chart-row-value.color-critical {\r\n" +
         " color: #f66\r\n" +
+        "}\r\n" +
+        ".stats-chart-row-value.color-serious {\r\n" +
+        " color: #ff704d;\r\n" +
         "}\r\n" +
         "\r\n" +
         ".stats-chart-row-value.color-medium {\r\n" +
@@ -61,18 +63,16 @@ export const getStyles = () => {
         " height: 5px\r\n" +
         "}\r\n" +
         "\r\n" +
-        ".stats-chart-row-bar-value.color-high {\r\n" +
+        ".stats-chart-row-bar-value.color-critical {\r\n" +
         " background-color: #f66\r\n" +
+        "}\r\n" +
+        ".stats-chart-row-bar-value.color-serious {\r\n" +
+        " background-color: #ff704d;\r\n" +
         "}\r\n" +
         "\r\n" +
         ".stats-chart-row-bar-value.color-medium {\r\n" +
         " background-color: #eeb943\r\n" +
         "}\r\n" +
-        "\r\n" +
-        ".stats-chart-row-bar-value.color-low {\r\n" +
-        " background-color: #60c888\r\n" +
-        "}\r\n" +
-        "\r\n" +
         ".block-color {\r\n" +
         " background-color: #334670;\r\n" +
         "}\r\n" +
@@ -83,7 +83,9 @@ export const getStyles = () => {
         "\r\n" +
         ".light-red{\r\n" +
         " background-color: #FFCCCB;\r\n" +
-        "}"
+        "}\r\n" +
+        ".bg-danger-light { background-color: #ff704d; }\r\n" +
+        ".accordion-item.custom { --bs-accordion-active-bg: #ff704d; --bs-accordion-active-color: #fff; }"
     )
 }
 
@@ -97,7 +99,7 @@ export const getJsRules = async (filePath) => {
     }
 };
 
-export const deserializedAxeResults = () => {
+export const deserializedAxeResults = async () => {
 
     let resultData = [];
 
@@ -163,59 +165,6 @@ export const deserializedAxeResults = () => {
     return resultData;
 }
 
-export const deserializedWaveResults = async () => {
-
-    const resultsData = [];
-
-    for (const item of wcagResult.waveViolations) {
-        for (const jsonReportKey of Object.keys(item)) {
-            const jsonReport = item[jsonReportKey];
-
-            for (const [categoryKey, categoryValue] of Object.entries(jsonReport)) {
-                if (categoryKey !== 'feature' && categoryKey !== 'structure' && categoryKey !== 'aria') {
-                    for (const [itemKey, itemValue] of Object.entries(categoryValue.items)) {
-                        try {
-                            let responseDetails = await axios.get(`https://wave.webaim.org/api/docs?id=${itemKey}`);
-                            let responseDetailsData = responseDetails.data;
-
-                            let guidelines = [];
-
-                            responseDetailsData.guidelines.forEach(x => {
-                                guidelines.push(
-                                    {
-                                        name: "Wave",
-                                        guidelineCode: x.name,
-                                        guidelineLink: x.link,
-                                        guidelineLevel: ''
-                                    });
-                            });
-
-                            const result = {
-                                url: jsonReportKey,
-                                title: responseDetailsData.title ?? ''.trim().replace(/\r\n/g, ''),
-                                summary: responseDetailsData.summary ?? ''.trim().replace(/\r\n/g, ''),
-                                purpose: responseDetailsData.purpose ?? ''.trim().replace(/\r\n/g, ''),
-                                actions: responseDetailsData.actions ?? ''.trim().replace(/\r\n/g, ''),
-                                elementXPath: itemValue.xpaths,
-                                type: responseDetailsData.type,
-                                count: itemValue.count,
-                                guidelines: guidelines,
-                                tool: "Wave"
-                            };
-
-                            resultsData.push(result);
-                        } catch (error) {
-                            console.error(`Error fetching data for ${itemKey}:`, error);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return resultsData;
-}
-
 export const deserializedStatistics = () => {
     const statsData = [];
 
@@ -249,55 +198,55 @@ export const deserializedLighthouseResults = async () => {
         items.forEach((item) => {
             const debugData = item.details?.debugData || {};
             const detailsItemList = item.details?.items || [];
+            if (debugData !== undefined && detailsItemList.length > 0) {
+                let actions = '';
+                let elementXPath = [];
+                let guidelines = [];
 
-            let actions = '';
-            let elementXPath = [];
-            let guidelines = [];
+                guidelines.push(
+                    {
+                        name: "Lighthouse",
+                        guidelineCode: (debugData.tags || [])
+                            .filter(tag => tag.startsWith("wcag") || tag.startsWith("cat."))
+                            .join(", "),
+                        guidelineLink: '',
+                        guidelineLevel: ''
+                    });
 
-            guidelines.push(
-                {
-                    name: "Lighthouse",
-                    guidelineCode: (debugData.tags || [])
-                        .filter(tag => tag.startsWith("wcag") || tag.startsWith("cat."))
-                        .join(", "),
-                    guidelineLink: '',
-                    guidelineLevel: ''
+                detailsItemList.map((entry) => {
+                    const node = entry.node || {};
+
+                    if (actions === '') {
+                        actions = node.explanation;
+                    }
+
+                    //sanitize html
+                    let xpath = node.snippet.trim()
+                        .replaceAll(/(\r\n|\n)/g, '')
+                        .replaceAll(/ {2}/g, '')
+                        .replaceAll(/&/g, "&amp;")
+                        .replaceAll(/</g, "&lt;")
+                        .replaceAll(/>/g, "&gt;")
+                        .replaceAll(/"/g, "&quot;")
+                        .replaceAll(/'/g, "&#039;");
+
+                    elementXPath.push(xpath);
                 });
 
-            detailsItemList.map((entry) => {
-                const node = entry.node || {};
+                let resultData = {
+                    url: pageUrlKey[0],
+                    title: item.id,
+                    summary: item.title,
+                    purpose: item.description,
+                    actions: actions,
+                    elementXPath: elementXPath,
+                    type: debugData.impact,
+                    tool: "Lighthouse",
+                    guidelines: guidelines
+                };
 
-                if (actions === '') {
-                    actions = node.explanation;
-                }
-
-                //sanitize html
-                let xpath = node.snippet.trim()
-                    .replaceAll(/(\r\n|\n)/g, '')
-                    .replaceAll(/ {2}/g, '')
-                    .replaceAll(/&/g, "&amp;")
-                    .replaceAll(/</g, "&lt;")
-                    .replaceAll(/>/g, "&gt;")
-                    .replaceAll(/"/g, "&quot;")
-                    .replaceAll(/'/g, "&#039;");
-
-                elementXPath.push(xpath);
-            });
-
-            const resultData = {
-                url: pageUrlKey[0],
-                title: item.id,
-                summary: item.title,
-                purpose: item.description,
-                actions: actions,
-                elementXPath: elementXPath,
-                type: debugData.impact,
-                guidelines: guidelines,
-                count: elementXPath.length,
-                tool: "Lighthouse"
-            };
-
-            resultsData.push(resultData);
+                resultsData.push(resultData);
+            }
         });
 
     });

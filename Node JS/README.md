@@ -6,6 +6,7 @@ The implementation of accessibility testing using Wave, Axe. Below are the steps
 
 Ensure you have the following dependencies installed:
 - [Axe](https://www.deque.com/axe/)
+- [Lighthouse](https://github.com/GoogleChrome/lighthouse)
 - [WebDriverIO](https://webdriver.io/)
  
 ## Importing Required Methods

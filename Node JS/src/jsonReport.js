@@ -33,7 +33,7 @@ export const includeAxeStatistics = (waveStatsData, axeViolations) => {
 
     const updatedStatistics = [];
 
-    waveStatsData.forEach((item, index) => {
+    waveStatsData.forEach((item) => {
         let report = axeViolations.filter(c => c.URL === item.URL);
 
         let errorCount = parseInt(item.Error);
@@ -69,7 +69,7 @@ export const createOverViewJson = (statistics) => {
     let totalPages=0;
     let overViewList = [];
 
-    statistics.forEach((item, index) => {
+    statistics.forEach((item) => {
         let errorCount = parseInt(item.critical);
         let medium = parseInt(item.medium);
         let low = parseInt(item.low);

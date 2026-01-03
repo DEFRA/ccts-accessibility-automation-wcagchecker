@@ -6,9 +6,17 @@ import { getHtmlReportByGuideLine } from '../src/reportByGuideline.js'
 import { getHtmlReportByCategory } from '../src/reportByCategory.js';
 //import {getJsonReport} from '../src/jsonReport.js'
 
+// wdio.conf.js
+// beforeCommand: function (commandName, args) {
+//     if (commandName === 'url' || commandName === 'navigateTo') {
+//         const target = args[0]
+//         console.log('➡️ Navigation command:', target)
+//         await analyse(browser, '');
+//     }
+// }
+
 
 (async function example() {
-
     const browser = await remote({
         logLevel: 'error',
         capabilities: {
@@ -24,13 +32,13 @@ import { getHtmlReportByCategory } from '../src/reportByCategory.js';
         //call this method before invoking tests 
         await init();
 
+        await browser.url('https://environment.data.gov.uk/shoreline-planning/coastal-erosion');
+        await analyse(browser, '');
+
         await browser.url('https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs');
         await analyse(browser, '');
 
-        await browser.url('https://www.gov.uk/control-dog-public');
-        await analyse(browser, '');
-
-        await browser.url('https://environment.data.gov.uk/shoreline-planning/coastal-erosion');
+        await browser.url('https://planthealthportal.defra.gov.uk/');
         await analyse(browser, '');
 
     }
