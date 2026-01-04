@@ -35,12 +35,14 @@ import { getHtmlReportByCategory } from '../src/reportByCategory.js';
         await browser.url('https://environment.data.gov.uk/shoreline-planning/coastal-erosion');
         await analyse(browser, '');
 
+        await browser.url('https://www.gov.uk/check-flooding');
+        await analyse(browser, '');
+
         await browser.url('https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs');
         await analyse(browser, '');
 
         await browser.url('https://planthealthportal.defra.gov.uk/');
         await analyse(browser, '');
-
     }
     catch (err) {
         console.error(err.message);

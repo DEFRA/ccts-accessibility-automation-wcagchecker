@@ -26,7 +26,7 @@ let htmlTotalIssues =
     '         <div class="col-4">' +
     '             <div class="card">' +
     '                 <div class="card-header h6 bg-danger bg-gradient text-white text-opacity-75">' +
-    "                     Critical+Serious Issues" +
+    "                     Critical & Serious Issues" +
     "                    </div>" +
     '                 <div class="card-body text-center h6">' +
     "                     ${TotalCriticalIssues}" +
@@ -97,7 +97,7 @@ let htmlNonComplaint =
     '                     </div>' +
     '                         <div class="stats-chart-row"></div>' +
     '                         <div class="stats-chart-row">' +
-    '                         <strong class="text-white text-opacity-75">Errors: ${totalErrors}</strong>' +
+    '                         <strong class="text-white text-opacity-75">Critical & Serious errors: ${totalErrors}</strong>' +
     '                     </div>' +
     "                     </div>" +
     "                 </div>" +
@@ -166,10 +166,10 @@ export const getHtmlReportByCategory = async () => {
         html.push(`<div class="container mt-4 bg-light shadow-lg"><div class="container-fluid p-3"><h6 class="text-secondary">` +
             `Page ${pageIndex + 1} - ${item.url}</h6><div class="row mt-3">`);
 
-        const message = `${totalCriticalCount > 0 ? "This page is at risk of accessibility issues." : "This page is not at risk of accessibility issues."}`;
+        const message = `${totalErrors > 0 ? "This page is at risk of accessibility issues." : "This page is not at risk of accessibility issues. However addressing medium findings is advisable."}`;
 
         let newHtmlNonComplaint = htmlNonComplaint
-            .replaceAll("${ComplaintTitle}", "CONFORMANCE")
+            .replaceAll("${ComplaintTitle}", "Conformance")
             .replaceAll("${ComplaintMessage}", message);
 
         html.push(newHtmlNonComplaint.replaceAll("${totalErrors}", totalErrors.toString()));
